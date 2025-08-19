@@ -1,20 +1,11 @@
 import argparse
 import logging
-from enum import StrEnum, auto
+import sys
 
+from dotenv import load_dotenv
 
-class AssetType(StrEnum):
-    DATASET = auto()
-    MODEL = auto()
-    EXPERIMENT = auto()
-
-
-class SynchronizationMode(StrEnum):
-    ADD = auto()
-    UPDATE = auto()
-    REMOVE = auto()
-    ALL = auto()
-
+from common import AssetType, SynchronizationMode
+from datasets import synchronize_datasets
 
 SUPPORTED_OPERATIONS: list[tuple[AssetType, SynchronizationMode]] = []
 
@@ -45,6 +36,13 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    load_dotenv()
+
+    logging.basicConfig(level=logging.INFO)
+    logging.info(f"Started {' '.join(sys.argv)}")
+
+
+    synchronize_datasets(SynchronizationMode.ADD)
 
 
 if __name__ == '__main__':
