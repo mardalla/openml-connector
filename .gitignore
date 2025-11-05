@@ -1,5 +1,7 @@
 # configurations
 .env.override
+.prod.env
+.test.env
 
 # IDE
 .idea/
