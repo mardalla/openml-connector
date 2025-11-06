@@ -285,6 +285,8 @@ def main():
     logger.setLevel(args.app_log_level.upper())
     configure_connector()
 
+    errors = []
+
     match (args.mode, args.value):
         case Modes.ID, id_:
             if not id_.isdigit():
@@ -297,7 +299,18 @@ def main():
                 logger.error(f"Identifier specified should be an integer, is {id_!r}")
                 quit(1)
             for dataset in list_datasets(from_=int(id_)):
-                upsert_dataset(dataset)
+                try:
+                    upsert_dataset(dataset)
+                    errors.append(None)
+                except Exception as e:
+                    logger.error(f"Unrecoverable error upserting dataset {dataset}")
+                    logger.exception(e)
+                    errors.append(e)
+                if len(errors) > 10:
+                    errors.pop()
+                    if sum(e is not None for e in errors) > 5:
+                        logger.error("Quiting because we are encountering too many errors")
+                        quit(1)
                 if PER_DATASET_DELAY:
                     time.sleep(PER_DATASET_DELAY)
         case Modes.ALL, None:

@@ -14,7 +14,9 @@ from typing import Iterable
 import requests
 
 repositories = list(range(1000, 1009))
+LOCAL_PLATFORM = 'openml'
 LOCAL_API = "http://localhost/"
+LOCAL_API = "https://test.openml.org/aiod/"
 PRODUCTION_API = "https://api.aiod.eu/"
 
 
@@ -49,7 +51,7 @@ def diff(local: dict, prod: dict, ignore: Iterable | None = None):
 
 
 for repo in repositories:
-    local = requests.get(f"{LOCAL_API}platforms/example/datasets/{repo}")
+    local = requests.get(f"{LOCAL_API}platforms/{LOCAL_PLATFORM}/datasets/{repo}")
     assert local.status_code == HTTPStatus.OK, (local.reason, local.content, repo)
     prod = requests.get(f"{PRODUCTION_API}platforms/openml/datasets/{repo}")
     assert prod.status_code == HTTPStatus.OK, (prod.reason, prod.content, repo)
