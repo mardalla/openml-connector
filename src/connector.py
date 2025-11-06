@@ -47,7 +47,12 @@ def list_datasets(from_: int | None = None):
             response = requests.get(url_data.format(offset=offset), timeout=REQUEST_TIMEOUT)
             if not response.ok:
                 status_code = response.status_code
-                msg = response.json()["error"]["message"]
+                try:
+                    msg = response.json()["error"]["message"]
+                except Exception as e:
+                    logger.error("Error while paginating, cannot continue.")
+                    logger.exception(e)
+                    msg = response.content
                 err_msg = f"Error while fetching {url_data} from OpenML: ({status_code}) {msg}"
                 raise ServerError(err_msg)
             logger.debug(f"Paging through datasets (offset {offset})")
