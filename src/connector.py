@@ -95,8 +95,9 @@ def fetch_openml_dataset(identifier_: int, qualities: dict | None = None):
             status_code = qualities_response.status_code
             try:
                 msg = qualities_response.json()["error"]["message"]
-            except:
-                msg = response.content
+            except Exception as e:
+                logger.exception(e)
+                msg = qualities_response.content
             err_msg = f"Error while fetching {qualities_url} from OpenML: ({status_code}) {msg}"
             raise ServerError(err_msg)
         try:
@@ -140,6 +141,9 @@ def _convert_dataset_to_aiod(dataset: dict) -> dict:
             "unit": "instances",
             "value": int(float(n_rows)),  # OpenML adds the decimal: xxx.0
         }
+    keyword = dataset.get("tag", [])
+    if isinstance(keyword, str):
+        keyword = [keyword]
 
     return dict(
         platform=PLATFORM_NAME,
@@ -152,7 +156,7 @@ def _convert_dataset_to_aiod(dataset: dict) -> dict:
         license=dataset.get("licence"),
         distribution=[dict(content_url=dataset["url"], encoding_format=dataset["format"])],
         is_accessible_for_free=True,
-        keyword=dataset.get("tag", []),
+        keyword=keyword,
         size=size,
     )
 
@@ -217,7 +221,9 @@ def parse_args():
         help=(
             "For mode 'ID' this must be an openml identifier. "
             "For mode 'SINCE' this must be an openml identifier, this dataset and "
-            "all datasets with higher identifier will be indexed."
+            "all datasets with higher identifier will be indexed. It can also be "
+            "set to 'auto', in which case the last inserted dataset on AI-on-Demand "
+            "will be determined and only datasets uploaded after that one are indexed. "
             "Cannot be set with mode 'ALL'."
         )
     )
@@ -284,6 +290,20 @@ def configure_connector():
     logger.info("Successfully authenticated and connected to AI-on-Demand.")
 
 
+def get_newest_indexed_dataset() -> str:
+    logger.info("Finding last uploaded OpenML dataset on AI-on-Demand")
+    last_dataset = 0
+    batch_size = 100
+    for offset in range(0, 1_000_000, batch_size):
+        openml_datasets = aiod.datasets.get_list(platform=PLATFORM_NAME, data_format="json", offset=offset, limit=batch_size)
+        if not openml_datasets:
+            break
+        last_dataset = max(int(d["platform_resource_identifier"]) for d in openml_datasets)
+        logger.info(f"Found dataset {last_dataset} was already indexed on AI-on-Demand.")
+    logger.info(f"Dataset {last_dataset} is the last dataset indexed on AI-on-Demand.")
+    return str(last_dataset)
+
+
 def main():
     args = parse_args()
     logging.basicConfig(level=args.root_log_level.upper())
@@ -300,6 +320,8 @@ def main():
             dataset = fetch_openml_dataset(int(id_))
             upsert_dataset(dataset)
         case Modes.SINCE, id_:
+            if id_ == 'auto':
+                id_ = get_newest_indexed_dataset()
             if not id_.isdigit():
                 logger.error(f"Identifier specified should be an integer, is {id_!r}")
                 quit(1)
