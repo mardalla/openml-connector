@@ -8,8 +8,8 @@ This package is not intended to be used directly by others, but may serve as an 
 
 This package is work in progress.
 
-- [] Automatically publish to Docker Hub on release  
-- [] Add tests  
+- [ ] Automatically publish to Docker Hub on release  
+- [ ] Add tests  
 
 ## Installation
 
