@@ -3,6 +3,9 @@
 .prod.env
 .test.env
 
+# Certificates
+certs/
+
 # IDE
 .idea/
 
