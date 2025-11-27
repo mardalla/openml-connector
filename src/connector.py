@@ -53,8 +53,6 @@ def list_datasets(from_: int | None = None):
 
             if not response.ok:
                 status_code = response.status_code
-                # OpenML “database connection error, please wait N seconds” → 412
-                # Don’t kill the whole run; skip this page and continue.
                 if status_code == 412:
                     logger.warning(
                         "OpenML returned 412 (database connection error) for %s; "
@@ -87,8 +85,6 @@ def list_datasets(from_: int | None = None):
                 else:
                     break
             except Exception as e:
-                # If OpenML returns non-JSON or a weird structure for some page,
-                # treat it as fatal for this run.
                 raise ParsingError(
                     f"Could not parse response ({response.status_code}): "
                     f"{response.content}"
@@ -125,7 +121,6 @@ def fetch_openml_dataset(identifier_: int, qualities: dict | None = None):
 
         if not qualities_response.ok:
             status_code = qualities_response.status_code
-            # “No qualities found” / DB error → 412. We just continue without qualities.
             if status_code == 412:
                 logger.warning(
                     "OpenML returned 412 for qualities of dataset %s; "
@@ -230,14 +225,12 @@ def upsert_dataset(dataset: dict) -> int:
         local_dataset = _convert_dataset_to_aiod(dataset)
 
         try:
-            # Try to find an existing AIOD dataset for this OpenML ID.
             aiod_dataset = aiod.datasets.get_asset_from_platform(
                 platform=PLATFORM_NAME,
                 platform_identifier=identifier,
                 data_format="json",
             )
         except (KeyError, RequestsJSONDecodeError) as e:
-            # Treat “not found” or “non-JSON” as “no existing dataset yet”.
             logger.debug(
                 "No existing AI-on-Demand dataset for OpenML id %s "
                 "or response was non-JSON (%s). Registering new asset.",
@@ -256,10 +249,8 @@ def upsert_dataset(dataset: dict) -> int:
                     response.content,
                 )
                 return response.status_code
-            # Anything else is unexpected – surface it.
             raise
 
-        # We got an existing dataset back, ensure it has an identifier.
         if "identifier" not in aiod_dataset:
             raise RuntimeError(
                 "Unexpected server response retrieving OpenML dataset "
@@ -370,10 +361,8 @@ def configure_connector():
     logger.info(f"{'Client ID:':25} {aiod.config.client_id}")
     logger.info(f"{'Using secret:':25} {masked_token}")
 
-    # Configure AIoD token using client credentials
     set_token(Token(client_secret=token))
 
-    # Try to call authorization_test, but don't die if it misbehaves.
     try:
         user = aiod.get_current_user()
     except Exception as e:
